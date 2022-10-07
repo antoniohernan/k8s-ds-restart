@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: "DaemonSet"
+metadata:
+  labels:
+    app: netutils
+    worker: "true"
+  name: netutils
+  namespace: netutils
+spec:
+  selector:
+    matchLabels:
+      worker: "true"
+  template:
+    metadata:
+      labels:
+        app: netutils
+        worker: "true"
+    spec:
+      nodeSelector:
+        worker: "true"
+      containers:
+        - name: netutils
+          image: shefirot/netutils-dgt:1.0
