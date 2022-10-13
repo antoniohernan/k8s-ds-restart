@@ -1,0 +1,4 @@
+
+
+ Pods running in DaemonSet: netutils deployed in the NameSpace: netutils
+
