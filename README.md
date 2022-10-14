@@ -12,6 +12,18 @@ Initially it was intended for a GlusterFS installation on K8S whose pods would "
 
 **The program is under license view the section license.**
 
+
+## Notes
+
+Pods desired state vs starting state
+
+```
+netutils-vc8rn  node1        Running         True
+netutils-zswl4  node2        Pending         False
+```
+
+
+
 ## Colaboration
 You can colaborate in the project developing it o making issues in the section issues in GitHub.
 

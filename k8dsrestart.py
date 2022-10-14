@@ -24,8 +24,9 @@ try:
 except ApiException as e:
   print("Exception when calling CoreV1Api->list_namespaced_pod: %s\n" % e)
 
-#print ("%s\n" % ret.items[0])
+#print ("%s\n" % ret.items[1])
 
-print("%s\t%s\t%s" % ('Pod Name','Run Node','Status'))
+print("%s\t%s\t%s\t\t%s" % ('Pod Name','Run Node','Status','Container Ready'))
 for i in ret.items:
-    print("%s\t%s\t%s" % (i.metadata.name, i.spec.node_name, i.status.phase))
+    print("%s\t%s\t%s\t\t%s" % (i.metadata.name, i.spec.node_name, i.status.phase, i.status.container_statuses[0].ready))
+
