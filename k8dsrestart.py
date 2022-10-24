@@ -41,10 +41,9 @@ for i in lpods:
   while True:
     retrycount += 1
     print(".", end='',flush=True)
-    # Pending options values, terminate force+nograce
     body = client.V1DeleteOptions()
     try:
-      v1.delete_namespaced_pod(podname, args.namespace, body=body)
+      v1.delete_namespaced_pod(podname, args.namespace, body=body, propagation_policy="Background", grace_period_seconds=0)
     except ApiException as x:
       print("Exception when calling CoreV1Api->delete_namespaced_pod: %s\n" % x)
     time.sleep(2)
