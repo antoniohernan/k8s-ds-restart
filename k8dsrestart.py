@@ -13,65 +13,74 @@ parser.add_argument('--daemonset',required=True, help='Daemoset name')
 args = parser.parse_args()
 pretty = 'true'
 
-config.load_kube_config()
-v1 = client.CoreV1Api()
+def retrievepods():
+  config.load_kube_config()
+  v1 = client.CoreV1Api()
+  try:
+    return v1.list_namespaced_pod(args.namespace,pretty=pretty)
+  except ApiException as x:
+    print("Exception when calling CoreV1Api->list_namespaced_pod: %s\n" % x)
+    
+def deletepod(podname, namespacename, drymode ):
+  config.load_kube_config()
+  v1   = client.CoreV1Api()
+  body = client.V1DeleteOptions()
+  try:
+    if not drymode:
+      v1.delete_namespaced_pod(podname, namespacename, body=body, propagation_policy="Background", grace_period_seconds=0)
+      time.sleep(10)
+    else:
+      print(" -- will be deleted -- (dry run mode) ", end='', flush=True)
+  except ApiException as x:
+    print("Exception when calling CoreV1Api->delete_namespaced_pod: %s\n" % x)
 
-print ("\n\n Pods running in DaemonSet: %s deployed in the NameSpace: %s\n" % (args.namespace, args.daemonset))
+def printpods(poditems):
+  print ("\n\n Pods running in DaemonSet: %s deployed in the NameSpace: %s\n" % (args.namespace, args.daemonset))
+  print("%s\t%s\t%s\t\t%s" % ('Pod Name','Run Node','Status','Container Ready'))
+  for i in poditems.items:
+    print("%s\t%s\t%s\t\t%s" % (i.metadata.name, i.spec.node_name, i.status.phase, i.status.container_statuses[0].ready))  
 
-try:
-  ret = v1.list_namespaced_pod(args.namespace,pretty=pretty)
-except ApiException as e:
-  print("Exception when calling CoreV1Api->list_namespaced_pod: %s\n" % e)
-
+initpods = retrievepods()
 lpods = []
-
-print("%s\t%s\t%s\t\t%s" % ('Pod Name','Run Node','Status','Container Ready'))
-for i in ret.items:
-    print("%s\t%s\t%s\t\t%s" % (i.metadata.name, i.spec.node_name, i.status.phase, i.status.container_statuses[0].ready))
+for i in initpods.items:
     lpods.append(i.spec.node_name+";"+i.metadata.name)
+
+printpods(initpods)
 
 for i in lpods:
   element    = i.split(";")
   nodeworker = element[0]
   podname    = element[1]
   salida     = False
-  retrycount = 0
   print ("\n Restarting pod: %s in node: %s " % (podname, nodeworker), end='', flush=True)
-    
-  body = client.V1DeleteOptions()
-
-  try:
-    if not args.dryrun:
-      v1.delete_namespaced_pod(podname, args.namespace, body=body, propagation_policy="Background", grace_period_seconds=0)
-      sleep(5)
-    else:
-      print(" -- will be deleted -- (dry run mode)", end='', flush=True)
-  except ApiException as x:
-    print("Exception when calling CoreV1Api->delete_namespaced_pod: %s\n" % x)
-
+  deletepod(podname, args.namespace, args.dryrun)  
+  retrycount = 0
+  
   while True:
-    try:
-      retprima = v1.list_namespaced_pod(args.namespace,pretty=pretty)
-    except ApiException as z:
-      print("Exception when calling CoreV1Api->list_namespaced_pod: %s\n" % z)
-
-    for podstatus in retprima.items:
-      if podstatus.spec.node_name == nodeworker and podstatus.status.phase == "Running" and podstatus.status.container_statuses[0].ready:
-        salida = True        
-      else:
-        salida = False
-
+    newpods = retrievepods()
+    salida = False
+    for podstatus in newpods.items:
+      for condition in podstatus.status.conditions:
+        if not args.dryrun: 
+          if podstatus.spec.node_name == nodeworker and podstatus.metadata.name != podname and condition.type == "Ready" and condition.status == 'True':
+            salida = True
+            break
+        else:
+          if podstatus.spec.node_name == nodeworker and condition.type == "Ready" and condition.status == 'True':
+            salida = True
+            break
       if salida:
-        print(" ok", flush=True)
-        break
-      elif not salida and retrycount < 9:
-        print(" .", end='',flush=True)
-        time.sleep(5)
-        retrycount += 1
-      else:
-        print(" error", flush=True)
-        salida  = True
-        break
+        break        
 
     if salida:
+      print(" ok", flush=True)
       break
+    elif not salida and retrycount < 9:
+      print(" .", end='',flush=True)
+      time.sleep(5)
+      retrycount += 1
+    else:
+      print(" error retries exceeded", flush=True)
+      break
+
+printpods(retrievepods())
