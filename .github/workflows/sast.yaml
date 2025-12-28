@@ -1,4 +1,6 @@
 name: Sast
+permissions:
+  contents: read
 
 on:
   push
@@ -8,7 +10,7 @@ jobs:
     name: Scan
     runs-on: ubuntu-latest
     container:
-      image: returntocorp/semgrep:0.98.0
+      image: returntocorp/semgrep:1.146.0
     # Skip any PR created by dependabot to avoid permission issues
     if: (github.actor != 'dependabot[bot]')
     steps:
